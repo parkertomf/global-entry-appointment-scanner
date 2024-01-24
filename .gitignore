@@ -1,2 +1,9 @@
 ### IntelliJ ###
 .idea/
+
+### Environment Variables ###
+.env
+.venv/
+
+# Cache
+__pycache__/
