@@ -1,9 +1,9 @@
+### Environment Variables ###
+.env
+
 ### IntelliJ ###
 .idea/
 
-### Environment Variables ###
-.env
-.venv/
-
-# Cache
+# Python
 __pycache__/
+.venv/
