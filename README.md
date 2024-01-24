@@ -49,5 +49,15 @@ python main.py
 
 The script will continuously check for available appointments and notify you of any new openings at your specified locations.
 
+## Example Notifications
+
+Below is an example of three iterations of output in your terminal:
+
+![Example Terminal Output](assets/example_terminal_output.jpg)
+
+Below is an example of a several text notifications received when an appointment in your specified time range becomes available:
+
+![Example Text Notification](assets/example_text_notifications.jpg)
+
 ## Contributing
 Feel free to fork this repository and submit pull requests for any enhancements or fixes.
