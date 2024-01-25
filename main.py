@@ -1,100 +1,120 @@
 import time
+from twilio.base.exceptions import TwilioRestException
 from twilio.rest import Client
 import requests
+from datetime import datetime
 from dateutil import parser
+from dotenv import load_dotenv
+import os
+from config import API_URL_ENDING, BASE_API_URL, LOCATION_MAP, CHECK_INTERVAL, ERROR_RETRY_INTERVAL, TARGET_YEAR, \
+    TARGET_MONTH, TARGET_DAY
 
-# Create client
-account_sid = ''  # Grab from Twilio
-auth_token = ''  # Grab from Twilio
-client = Client(account_sid, auth_token)
+# Load the variables from the .env file
+load_dotenv()
 
-location_map = {
-    "bowling_green": {
-        "location_name": "Bowling Green",
-        # Update the URL to match your location. (Use network monitor to find the URL in their appointment selector.)
-        "location_id": "6480",
-        # The last appointment that we've notified about, to prevent duplicate notifications
-        "prev_start": None,
-        # Placeholder last_checked time of (functionally) never
-        "last_checked": 0
-    },
-    "jfk": {
-        "location_name": "John F. Kennedy Airport",
-        "location_id": "5140",
-        "prev_start": None,
-        "last_checked": 0
-    },
-    "newark": {
-        "location_name": "Newark",
-        "location_id": "5444",
-        "prev_start": None,
-        "last_checked": 0
-    }
-}
+# Create the Twilio client if credentials are set
+account_sid = os.getenv('ACCOUNT_SID')
+auth_token = os.getenv('AUTH_TOKEN')
+is_twilio_used = account_sid != '' and auth_token != ''
+if is_twilio_used:
+    client = Client(account_sid, auth_token)
 
 
 # Send a text message and print the message
-def notify(message):
+def send_text_message(message):
+    """Send a text message using the Twilio client if credentials are set."""
+    if is_twilio_used:
+        try:
+            client.messages.create(
+                body=message,
+                from_=os.getenv('TWILIO_PHONE_NUMBER'),  # Grab from Twilio (e.g. +12061231231)
+                to=os.getenv('YOUR_PHONE_NUMBER')  # Insert your own phone number (e.g. +12067897897)
+            )
+        except TwilioRestException as exception:
+            print(f"Twilio API error: {exception}")
+        except Exception as exception:
+            print(f"Unexpected exception sending text message via Twilio: {exception}")
+
+
+def print_and_send_text_message(message):
+    """Send the given message as a text to the user's phone number and print it as a message to the console."""
     print(message)
-    message = client.messages.create(
-        body=message,
-        from_='',
-        to=''
-    )
+    send_text_message(message)
 
 
-def check(location):
-    # Check if any appointments are available, and if so, notify
-    # Return True on error
+def get_more_readable_timestamp(timestamp):
+    """Convert a timestamp string in the format of, for example, '2024-04-15T13:10' to '2024-04-15 at 13:10'"""
+    return datetime.strptime(timestamp, '%Y-%m-%dT%H:%M').strftime('%Y-%m-%d at %H:%M')
 
-    resp = requests.get(
-        f'https://ttp.cbp.dhs.gov/schedulerapi/slots?orderBy=soonest&limit=1&locationId={location["location_id"]}&minimum=1')
 
-    if not resp.ok:
-        notify(f'Failed with status code {resp.status_code}')
-        return True
+def check_location_for_appointments_and_notify(current_location):
+    """Check if any appointments are available for the given location, and, if so, notify the user.
+    Returns true if no errors are encountered attempting to reach the endpoint; false otherwise.
+    """
+    try:
+        resp = requests.get(f"{BASE_API_URL}{current_location['location_id']}{API_URL_ENDING}")
+        if not resp.ok:
+            print_and_send_text_message(f'Failed with status code {resp.status_code}')
+            return False
+    # Handle any exceptions that occur before the HTTP request completes
+    except requests.RequestException as exception:
+        print_and_send_text_message(f'Request failed: {exception}')
+        return False
 
-    appts = resp.json()
-    if len(appts) > 0:
-        appt = appts[0]
-        # Placeholder start time in the far future
-        start = appt.get('startTimestamp', '2099-01-01T00:00')
-        # Prevent duplicates
-        if start != location["prev_start"]:
-            print(f'{start} appointment found at {location["location_name"]}')
-            location["prev_start"] = start
-            date = parser.parse(start)
-            # Change these checks to whatever you need. For me, it's November 2023.
-            if date.year == 2023 and date.month == 11 and date.day < 15:
-                notify(f'{start} appointment found at {location["location_name"]}')
+    available_appointments = resp.json()
+    if len(available_appointments) > 0:
+        # The appointment is always in a list of size 1, so we need to extract it and then the date and time.
+        appointment_date_and_time = available_appointments[0].get('startTimestamp')
+
+        # Notify the user if there is a different earliest appointment than one about which they have already
+        # been notified
+        if appointment_date_and_time != current_location["prev_appt_date_and_time"]:
+            readable_timestamp = get_more_readable_timestamp(appointment_date_and_time)
+            print(f'{readable_timestamp} appointment found at {current_location["location_name"]}')
+
+            current_location["prev_appt_date_and_time"] = appointment_date_and_time
+
+            # Send the text message
+            date = parser.parse(appointment_date_and_time)
+            # You can remove this check or parts of it if you want to be notified for any new appointments,
+            # appointments in a month not before a specific day, etc.
+            if date.year == TARGET_YEAR and date.month == TARGET_MONTH and date.day < TARGET_DAY:
+                send_text_message(f'{readable_timestamp} appointment found at {current_location["location_name"]}')
+
+        # The earliest available appointment is not different from the prior one
         else:
-            print(f'Found 0 new appointments at {location["location_name"]}')
+            print(f'Found 0 new appointments at {current_location["location_name"]}')
+
+    # There are no appointments at all at this location
     else:
-        print(f'Found 0 appointments at {location["location_name"]}')
-    return False
+        print(f'Found 0 appointments at {current_location["location_name"]}')
+
+    return True
 
 
 if __name__ == '__main__':
     while True:
         current_time = time.time()
-        checkedALocation = False
+        checked_a_location = False
 
-        for locationKey in location_map.keys():
-            location = location_map[locationKey]
-            if current_time - location["last_checked"] >= 60:
-                if check(location):
-                    # If an error is returned from the endpoint, set the next check time to 15 minutes from now.
-                    location["last_checked"] = current_time + 900
+        for locationKey in LOCATION_MAP.keys():
+            location = LOCATION_MAP[locationKey]
+            if current_time - location["last_checked"] >= CHECK_INTERVAL:
+                if not check_location_for_appointments_and_notify(location):
+                    # If an error occurs, set the next check time for this location to 15 minutes from now.
+                    location["last_checked"] = current_time + ERROR_RETRY_INTERVAL
                 else:
                     location["last_checked"] = current_time
-                checkedALocation = True
+                checked_a_location = True
 
         # Separate out iterations of the for loop where at least one location endpoint is not erroring with a newline
-        if checkedALocation:
+        if checked_a_location:
             print('\n')
 
-        # Calculate the minimum time until the next check and sleep accordingly
-        next_check_times = [location_map[location]["last_checked"] for location in location_map.keys()]
+        # Calculate the minimum time until the next check and sleep accordingly.
+        # i.e. if one location endpoint encountered an error and is waiting the duration of the error retry interval,
+        # but another endpoint did not encounter an error, then we only wait the normal check interval.
+        next_check_times = [LOCATION_MAP[location]["last_checked"] for location in LOCATION_MAP.keys()]
         min_wait_time = min(next_check_times) - current_time
         if min_wait_time > 0:
             time.sleep(min_wait_time)
