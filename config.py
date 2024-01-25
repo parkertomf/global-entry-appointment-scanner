@@ -1,25 +1,25 @@
 # The locations for which you want to check appointments.
 LOCATION_MAP = {
-    "bowling_green": {
+    0: {
         # This can be whatever you want that makes the location identifiable to you in notifications.
         "location_name": "Bowling Green",
         # Update the URL to match your location. (Use network monitor to find the URL in their appointment selector.)
         "location_id": "6480",
         # The last appointment that we've notified about, to prevent duplicate notifications
-        "prev_start": None,
+        "prev_appt_date_and_time": None,
         # Placeholder last_checked time of (functionally) never
         "last_checked": 0
     },
-    "jfk": {
+    1: {
         "location_name": "John F. Kennedy Airport",
         "location_id": "5140",
-        "prev_start": None,
+        "prev_appt_date_and_time": None,
         "last_checked": 0
     },
-    "newark": {
+    2: {
         "location_name": "Newark",
         "location_id": "5444",
-        "prev_start": None,
+        "prev_appt_date_and_time": None,
         "last_checked": 0
     }
 }
