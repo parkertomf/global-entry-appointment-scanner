@@ -1,4 +1,5 @@
 import time
+from twilio.base.exceptions import TwilioRestException
 from twilio.rest import Client
 import requests
 from datetime import datetime
@@ -11,21 +12,28 @@ from config import API_URL_ENDING, BASE_API_URL, LOCATION_MAP, CHECK_INTERVAL, E
 # Load the variables from the .env file
 load_dotenv()
 
-# Create client
-account_sid = os.getenv('ACCOUNT_SID')  # Grab from Twilio
-auth_token = os.getenv('AUTH_TOKEN')  # Grab from Twilio
-client = Client(account_sid, auth_token)
+# Create the Twilio client if credentials are set
+account_sid = os.getenv('ACCOUNT_SID')
+auth_token = os.getenv('AUTH_TOKEN')
+is_twilio_used = account_sid != '' and auth_token != ''
+if is_twilio_used:
+    client = Client(account_sid, auth_token)
 
 
 # Send a text message and print the message
 def send_text_message(message):
-    """Send a text message using the Twilio client."""
-    print(message)
-    client.messages.create(
-        body=message,
-        from_=os.getenv('TWILIO_PHONE_NUMBER'),  # Grab from Twilio (e.g. +12061231231)
-        to=os.getenv('YOUR_PHONE_NUMBER')  # Insert your own phone number (e.g. +12067897897)
-    )
+    """Send a text message using the Twilio client if credentials are set."""
+    if is_twilio_used:
+        try:
+            client.messages.create(
+                body=message,
+                from_=os.getenv('TWILIO_PHONE_NUMBER'),  # Grab from Twilio (e.g. +12061231231)
+                to=os.getenv('YOUR_PHONE_NUMBER')  # Insert your own phone number (e.g. +12067897897)
+            )
+        except TwilioRestException as exception:
+            print(f"Twilio API error: {exception}")
+        except Exception as exception:
+            print(f"Unexpected exception sending text message via Twilio: {exception}")
 
 
 def print_and_send_text_message(message):

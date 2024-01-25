@@ -24,7 +24,9 @@ cd global-entry-appointment-scanner
 
 ### Setting Up the Development Environment
 
-It is recommended to use a virtual environment to manage dependencies for this project. If you are using an IDE like PyCharm, it should do so automatically. You'll know if it exists because there will be a `.venv` directory at the project root.
+It is recommended to use a virtual environment to manage dependencies for this project. If you are using an IDE like
+PyCharm, it should do so automatically. You'll know if it exists because there will be a `.venv` directory in the
+project root.
 
 1. **Create a Virtual Environment** (if you don't have one already):
    Run the following command in the root directory of the project:
@@ -61,8 +63,10 @@ It is recommended to use a virtual environment to manage dependencies for this p
     pip install python-dotenv
     ```
     
-    You may also be able to install the final required package (Twilio) this way, but I installed it via my IDE (PyCharm).
-    Regardless, there are installation instructions here, including one method using pip: https://pypi.org/project/twilio/
+    You may also be able to install the final required package (Twilio) this way, but I installed it via my
+    IDE (PyCharm).
+    Regardless, there are installation instructions here, including one method
+    using pip: https://pypi.org/project/twilio/
 
 ### (Optional) Set up a Twilio Account
 If you want text notifications to a phone number, you must make a Twilio account. Contrary to seemingly popular belief,
@@ -78,8 +82,8 @@ the terminal.
 ### Set Up Environment Variables
 
 Note that although all these environment variables have to do with Twilio, unless you alter the code, you will still
-need to set this up for the script to run. If you don't care about text messaging notifications, you can just keep the
-placeholder values.
+need to set this up for the script to run. If you don't care about text messaging notifications, set all the values to
+empty strings (`''`).
 
 1. Create a `.env` file in the root directory of the project.
 2. Add the following lines to the `.env` file, replacing placeholders with your actual data:
@@ -90,12 +94,13 @@ placeholder values.
    YOUR_PHONE_NUMBER='your_phone_number'
    ```
 3. Replace `your_twilio_account_sid` and `your_twilio_auth_token` with your Twilio credentials.
-4. Replace `your_phone_number` with the phone number where you wish to receive notifications (format: +1234567890).
+4. Replace `your_phone_number` with the phone number where you wish to receive notifications (format: +12345678901).
 
 ## Usage
 
 ### Configuration
-Configure the script by editing the `location_map` in `main.py` to include the Global Entry locations you are interested in. You can find location IDs by inspecting network traffic on the Global Entry scheduling page.
+Configure the script by editing the `location_map` in `main.py` to include the Global Entry locations you are interested
+in. You can find location IDs by inspecting network traffic on the Global Entry scheduling page.
 
 ### Running the Script
 Run the script with:
@@ -103,7 +108,8 @@ Run the script with:
 python main.py
 ```
 
-The script will continuously check for available appointments and notify you of any new openings at your specified locations.
+The script will continuously check for available appointments and notify you of any new openings at your
+specified locations.
 
 ## Example Notifications
 
@@ -111,7 +117,8 @@ Below is an example of three iterations of output in your terminal:
 
 ![Example Terminal Output](assets/example_terminal_output.jpg)
 
-Below is an example of a several text notifications received when an appointment in your specified time range becomes available:
+Below is an example of a several text notifications received when an appointment in your specified time range
+becomes available:
 
 ![Example Text Notification](assets/example_text_notifications.jpg)
 
